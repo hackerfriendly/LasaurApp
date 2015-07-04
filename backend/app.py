@@ -421,7 +421,7 @@ def flash_firmware_handler(firmware_file=FIRMWARE):
     else:
         print "ERROR: Failed to flash Arduino."
         ret.append('<h2>Flashing Failed!</h2> Check terminal window for possible errors. ')
-        ret.append('Most likely LasaurApp could not find the right serial port.')
+        ret.append('Most likely LaserRaptor could not find the right serial port.')
         ret.append('<br><a href="/flash_firmware/'+firmware_file+'">try again</a> or <a href="/">return</a><br><br>')
         if os.name != 'posix':
             ret. append('If you know the COM ports the Arduino is connected to you can specifically select it here:')
@@ -540,7 +540,7 @@ def file_reader():
 
 
 ### Setup Argument Parser
-argparser = argparse.ArgumentParser(description='Run LasaurApp.', prog='lasaurapp')
+argparser = argparse.ArgumentParser(description='Run LaserRaptor.', prog='lasaurapp')
 argparser.add_argument('port', metavar='serial_port', nargs='?', default=False,
                     help='serial port to the Lasersaur')
 argparser.add_argument('-v', '--version', action='version', version='%(prog)s ' + VERSION)
@@ -564,7 +564,7 @@ args = argparser.parse_args()
 
 
 
-print "LasaurApp " + VERSION
+print "LaserRaptor " + VERSION
 
 if args.beaglebone:
     HARDWARE = 'beaglebone'
@@ -737,7 +737,7 @@ else:
 
     if not SERIAL_PORT:
         print "-----------------------------------------------------------------------------"
-        print "WARNING: LasaurApp doesn't know what serial device to connect to!"
+        print "WARNING: LaserRaptor doesn't know what serial device to connect to!"
         print "Make sure the Lasersaur hardware is connectd to the USB interface."
         if os.name == 'nt':
             print "ON WINDOWS: You will also need to setup the virtual com port."
