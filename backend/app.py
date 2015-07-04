@@ -84,12 +84,13 @@ def run_with_callback(host, port):
     # auto-connect on startup
     global SERIAL_PORT
     SerialManager.connect(SERIAL_PORT, BITSPERSECOND)
-    # open web-browser
-    try:
-        webbrowser.open_new_tab('http://127.0.0.1:'+str(port))
-        pass
-    except webbrowser.Error:
-        print "Cannot open Webbrowser, please do so manually."
+    if args.browser:
+        # open web-browser
+        try:
+            webbrowser.open_new_tab('http://127.0.0.1:'+str(port))
+            pass
+        except webbrowser.Error:
+            print "Cannot open Webbrowser, please do so manually."
     sys.stdout.flush()  # make sure everything gets flushed
     server.timeout = 0
     while 1:
@@ -402,6 +403,8 @@ argparser.add_argument('-p', '--public', dest='host_on_all_interfaces', action='
                     default=False, help='bind to all network devices (default: bind to 127.0.0.1)')
 argparser.add_argument('-l', '--list', dest='list_serial_devices', action='store_true',
                     default=False, help='list all serial devices currently connected')
+argparser.add_argument('-b', '--browser', action='store_true',
+                    default=False, help='automatically launch the app in a web browser')
 argparser.add_argument('-d', '--debug', dest='debug', action='store_true',
                     default=False, help='print more verbose for debugging')
 args = argparser.parse_args()
