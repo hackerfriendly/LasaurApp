@@ -1,6 +1,5 @@
 
 var hardware_ready_state = false;
-var firmware_version_reported = false;
 var lasaurapp_version_reported = false;
 var progress_not_yet_done_flag = false;
 
@@ -307,11 +306,6 @@ $(document).ready(function(){
             });
           }
         }
-        if (data.firmware_version && !firmware_version_reported) {
-          $().uxmessage('notice', "Firmware v" + data.firmware_version);
-          $('#firmware_version').html(data.firmware_version);
-          firmware_version_reported = true;
-        }
       }
       if (data.lasaurapp_version && !lasaurapp_version_reported) {
         $().uxmessage('notice', "LaserRaptor v" + data.lasaurapp_version);
@@ -452,19 +446,6 @@ $(document).ready(function(){
     send_gcode(gcode, "Going to origin ...", false);
     e.preventDefault();
   });
-
-  $("#reset_atmega").click(function(e){
-    $.get('/reset_atmega', function(data) {
-      if (data != "") {
-        $().uxmessage('success', "Atmega restarted!");
-        firmware_version_reported = false;
-      } else {
-        $().uxmessage('error', "Atmega restart failed!");
-      }
-    });
-    e.preventDefault();
-  });
-
 
   /// tab shortcut keys /////////////////////////
   $(document).on('keypress', null, 'p', function(e){

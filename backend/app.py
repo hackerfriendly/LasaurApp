@@ -6,8 +6,6 @@ import socket, webbrowser
 from wsgiref.simple_server import WSGIRequestHandler, make_server
 from bottle import *
 from serial_manager import SerialManager
-from flash import flash_upload, reset_atmega
-from build import build_firmware
 from filereaders import read_svg, read_dxf, read_ngc
 
 
@@ -102,12 +100,6 @@ def run_with_callback(host, port):
     print "Serial is set to %d bps" % BITSPERSECOND
     print "Point your browser to: "
     print "http://%s:%d/      (local)" % ('127.0.0.1', port)
-    # if host == '':
-    #     try:
-    #         print "http://%s:%d/   (public)" % (socket.gethostbyname(socket.gethostname()), port)
-    #     except socket.gaierror:
-    #         # print "http://beaglebone.local:4444/      (public)"
-    #         pass
     print "Use Ctrl-C to quit."
     print "-----------------------------------------------------------------------------"
     print
@@ -134,17 +126,12 @@ def run_with_callback(host, port):
     print "\nShutting down..."
     SerialManager.close()
 
-
-
-
 # @route('/longtest')
 # def longtest_handler():
 #     fp = open("longtest.ngc")
 #     for line in fp:
 #         SerialManager.queue_gcode_line(line)
 #     return "Longtest queued."
-
-
 
 @route('/css/:path#.+#')
 def static_css_handler(path):
@@ -200,8 +187,6 @@ def static_queue_handler(name):
 
 @route('/queue/list')
 def library_list_handler():
-    # base64.urlsafe_b64encode()
-    # base64.urlsafe_b64decode()
     # return a json list of file names
     files = []
     cwd_temp = os.getcwd()
@@ -352,8 +337,6 @@ def serial_handler(connect):
         print 'ambigious connect request from js: ' + connect
         return ""
 
-
-
 @route('/status')
 def get_status():
     status = copy.deepcopy(SerialManager.get_hardware_status())
@@ -377,83 +360,6 @@ def set_pause(flag):
             return '1'
         else:
             return '0'
-
-
-
-@route('/flash_firmware')
-@route('/flash_firmware/:firmware_file')
-def flash_firmware_handler(firmware_file=FIRMWARE):
-    global SERIAL_PORT, GUESS_PREFIX
-    return_code = 1
-    if SerialManager.is_connected():
-        SerialManager.close()
-    # get serial port by url argument
-    # e.g: /flash_firmware?port=COM3
-    if 'port' in request.GET.keys():
-        serial_port = request.GET['port']
-        if serial_port[:3] == "COM" or serial_port[:4] == "tty.":
-            SERIAL_PORT = serial_port
-    # get serial port by enumeration method
-    # currenty this works on windows only for updating the firmware
-    if not SERIAL_PORT:
-        SERIAL_PORT = SerialManager.match_device(GUESS_PREFIX, BITSPERSECOND)
-    # resort to brute force methode
-    # find available com ports and try them all
-    if not SERIAL_PORT:
-        comport_list = SerialManager.list_devices(BITSPERSECOND)
-        for port in comport_list:
-            print "Trying com port: " + port
-            return_code = flash_upload(port, resources_dir(), firmware_file, HARDWARE)
-            if return_code == 0:
-                print "Success with com port: " + port
-                SERIAL_PORT = port
-                break
-    else:
-        return_code = flash_upload(SERIAL_PORT, resources_dir(), firmware_file, HARDWARE)
-    ret = []
-    ret.append('Using com port: %s<br>' % (SERIAL_PORT))
-    ret.append('Using firmware: %s<br>' % (firmware_file))
-    if return_code == 0:
-        print "SUCCESS: Arduino appears to be flashed."
-        ret.append('<h2>Successfully Flashed!</h2><br>')
-        ret.append('<a href="/">return</a>')
-        return ''.join(ret)
-    else:
-        print "ERROR: Failed to flash Arduino."
-        ret.append('<h2>Flashing Failed!</h2> Check terminal window for possible errors. ')
-        ret.append('Most likely LaserRaptor could not find the right serial port.')
-        ret.append('<br><a href="/flash_firmware/'+firmware_file+'">try again</a> or <a href="/">return</a><br><br>')
-        if os.name != 'posix':
-            ret. append('If you know the COM ports the Arduino is connected to you can specifically select it here:')
-            for i in range(1,13):
-                ret. append('<br><a href="/flash_firmware?port=COM%s">COM%s</a>' % (i, i))
-        return ''.join(ret)
-
-
-@route('/build_firmware')
-def build_firmware_handler():
-    ret = []
-    buildname = "LasaurGrbl_from_src"
-    firmware_dir = os.path.join(resources_dir(), 'firmware')
-    source_dir = os.path.join(resources_dir(), 'firmware', 'src')
-    return_code = build_firmware(source_dir, firmware_dir, buildname)
-    if return_code != 0:
-        print ret
-        ret.append('<h2>FAIL: build error!</h2>')
-        ret.append('Syntax error maybe? Try builing in the terminal.')
-        ret.append('<br><a href="/">return</a><br><br>')
-    else:
-        print "SUCCESS: firmware built."
-        ret.append('<h2>SUCCESS: new firmware built!</h2>')
-        ret.append('<br><a href="/flash_firmware/'+buildname+'.hex">Flash Now!</a><br><br>')
-    return ''.join(ret)
-
-
-@route('/reset_atmega')
-def reset_atmega_handler():
-    reset_atmega(HARDWARE)
-    return '1'
-
 
 @route('/gcode', method='POST')
 def job_submit_handler():
@@ -513,32 +419,6 @@ def file_reader():
     return "You missed a field."
 
 
-
-# def check_user_credentials(username, password):
-#     return username in allowed and allowed[username] == password
-#
-# @route('/login')
-# def login():
-#     username = request.forms.get('username')
-#     password = request.forms.get('password')
-#     if check_user_credentials(username, password):
-#         response.set_cookie("account", username, secret=COOKIE_KEY)
-#         return "Welcome %s! You are now logged in." % username
-#     else:
-#         return "Login failed."
-#
-# @route('/logout')
-# def login():
-#     username = request.forms.get('username')
-#     password = request.forms.get('password')
-#     if check_user_credentials(username, password):
-#         response.delete_cookie("account", username, secret=COOKIE_KEY)
-#         return "Welcome %s! You are now logged out." % username
-#     else:
-#         return "Already logged out."
-
-
-
 ### Setup Argument Parser
 argparser = argparse.ArgumentParser(description='Run LaserRaptor.', prog='lasaurapp')
 argparser.add_argument('port', metavar='serial_port', nargs='?', default=False,
@@ -546,10 +426,6 @@ argparser.add_argument('port', metavar='serial_port', nargs='?', default=False,
 argparser.add_argument('-v', '--version', action='version', version='%(prog)s ' + VERSION)
 argparser.add_argument('-p', '--public', dest='host_on_all_interfaces', action='store_true',
                     default=False, help='bind to all network devices (default: bind to 127.0.0.1)')
-argparser.add_argument('-f', '--flash', dest='flash', action='store_true',
-                    default=False, help='flash Arduino with LasaurGrbl firmware')
-argparser.add_argument('-b', '--build', dest='build_flash', action='store_true',
-                    default=False, help='build and flash from firmware/src')
 argparser.add_argument('-l', '--list', dest='list_serial_devices', action='store_true',
                     default=False, help='list all serial devices currently connected')
 argparser.add_argument('-d', '--debug', dest='debug', action='store_true',
@@ -749,30 +625,8 @@ else:
         debug(True)
         if hasattr(sys, "_MEIPASS"):
             print "Data root is: " + sys._MEIPASS
-    if args.flash:
-        return_code = flash_upload(SERIAL_PORT, resources_dir(), FIRMWARE, HARDWARE)
-        if return_code == 0:
-            print "SUCCESS: Arduino appears to be flashed."
-        else:
-            print "ERROR: Failed to flash Arduino."
-    elif args.build_flash:
-        # build
-        buildname = "LasaurGrbl_from_src"
-        firmware_dir = os.path.join(resources_dir(), 'firmware')
-        source_dir = os.path.join(resources_dir(), 'firmware', 'src')
-        return_code = build_firmware(source_dir, firmware_dir, buildname)
-        if return_code != 0:
-            print ret
-        else:
-            print "SUCCESS: firmware built."
-            # flash
-            return_code = flash_upload(SERIAL_PORT, resources_dir(), FIRMWARE, HARDWARE)
-            if return_code == 0:
-                print "SUCCESS: Arduino appears to be flashed."
-            else:
-                print "ERROR: Failed to flash Arduino."
+
+    if args.host_on_all_interfaces:
+        run_with_callback('', NETWORK_PORT)
     else:
-        if args.host_on_all_interfaces:
-            run_with_callback('', NETWORK_PORT)
-        else:
-            run_with_callback('127.0.0.1', NETWORK_PORT)
+        run_with_callback('127.0.0.1', NETWORK_PORT)
