@@ -8,10 +8,9 @@ from bottle import *
 from serial_manager import SerialManager
 from filereaders import read_svg, read_dxf, read_ngc
 
-
-APPNAME = "lasaurapp"
+APPNAME = "LaserRaptor"
 VERSION = "14.11b"
-COMPANY_NAME = "com.nortd.labs"
+COMPANY_NAME = "com.hackerfriendly"
 SERIAL_PORT = None
 BITSPERSECOND = 57600
 NETWORK_PORT = 4444
@@ -420,9 +419,9 @@ def file_reader():
 
 
 ### Setup Argument Parser
-argparser = argparse.ArgumentParser(description='Run LaserRaptor.', prog='lasaurapp')
+argparser = argparse.ArgumentParser(description='Run LaserRaptor.', prog='LaserRaptor')
 argparser.add_argument('port', metavar='serial_port', nargs='?', default=False,
-                    help='serial port to the Lasersaur')
+                    help='serial port to the LaserRaptor')
 argparser.add_argument('-v', '--version', action='version', version='%(prog)s ' + VERSION)
 argparser.add_argument('-p', '--public', dest='host_on_all_interfaces', action='store_true',
                     default=False, help='bind to all network devices (default: bind to 127.0.0.1)')
@@ -614,7 +613,7 @@ else:
     if not SERIAL_PORT:
         print "-----------------------------------------------------------------------------"
         print "WARNING: LaserRaptor doesn't know what serial device to connect to!"
-        print "Make sure the Lasersaur hardware is connectd to the USB interface."
+        print "Make sure the LaserRaptor hardware is connected to the USB interface."
         if os.name == 'nt':
             print "ON WINDOWS: You will also need to setup the virtual com port."
             print "See 'Installing Drivers': http://arduino.cc/en/Guide/Windows"
