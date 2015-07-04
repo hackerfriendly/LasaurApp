@@ -426,7 +426,7 @@ else:
         print "-----------------------------------------------------------------------------"
         print "WARNING: LaserRaptor doesn't know what serial device to connect to!"
         print "Make sure the SmoothieBoard hardware is connected to the USB interface,"
-        print "or specify a different port with --port."
+        print "or specify a different port on the command line."
         print "-----------------------------------------------------------------------------"
 
     # run
