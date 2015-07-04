@@ -12,25 +12,11 @@ APPNAME = "LaserRaptor"
 VERSION = "14.11b"
 COMPANY_NAME = "com.hackerfriendly"
 SERIAL_PORT = None
-BITSPERSECOND = 57600
+SMOOTHIE_PORT = "/dev/ttyACM0"
+BITSPERSECOND = 115200
 NETWORK_PORT = 4444
-HARDWARE = 'x86'  # also: 'beaglebone', 'raspberrypi'
 CONFIG_FILE = "lasaurapp.conf"
-COOKIE_KEY = 'secret_key_jkn23489hsdf'
-FIRMWARE = "LasaurGrbl.hex"
 TOLERANCE = 0.08
-
-
-if os.name == 'nt': #sys.platform == 'win32':
-    GUESS_PREFIX = "Arduino"
-elif os.name == 'posix':
-    if sys.platform == "linux" or sys.platform == "linux2":
-        GUESS_PREFIX = "2341"  # match by arduino VID
-    else:
-        GUESS_PREFIX = "tty.usbmodem"
-else:
-    GUESS_PREFIX = "no prefix"
-
 
 def resources_dir():
     """This is to be used with all relative file access.
@@ -49,14 +35,7 @@ def resources_dir():
 def storage_dir():
     directory = ""
     if sys.platform == 'darwin':
-        # from AppKit import NSSearchPathForDirectoriesInDomains
-        # # NSApplicationSupportDirectory = 14
-        # # NSUserDomainMask = 1
-        # # True for expanding the tilde into a fully qualified path
-        # appdata = path.join(NSSearchPathForDirectoriesInDomains(14, 1, True)[0], APPNAME)
         directory = os.path.join(os.path.expanduser('~'), 'Library', 'Application Support', COMPANY_NAME, APPNAME)
-    elif sys.platform == 'win32':
-        directory = os.path.join(os.path.expandvars('%APPDATA%'), COMPANY_NAME, APPNAME)
     else:
         directory = os.path.join(os.path.expanduser('~'), "." + APPNAME)
 
@@ -104,8 +83,6 @@ def run_with_callback(host, port):
     print
     # auto-connect on startup
     global SERIAL_PORT
-    if not SERIAL_PORT:
-        SERIAL_PORT = SerialManager.match_device(GUESS_PREFIX, BITSPERSECOND)
     SerialManager.connect(SERIAL_PORT, BITSPERSECOND)
     # open web-browser
     try:
@@ -310,9 +287,7 @@ def serial_handler(connect):
         # print 'js is asking to connect serial'
         if not SerialManager.is_connected():
             try:
-                global SERIAL_PORT, BITSPERSECOND, GUESS_PREFIX
-                if not SERIAL_PORT:
-                    SERIAL_PORT = SerialManager.match_device(GUESS_PREFIX, BITSPERSECOND)
+                global SERIAL_PORT, BITSPERSECOND
                 SerialManager.connect(SERIAL_PORT, BITSPERSECOND)
                 ret = "Serial connected to %s:%d." % (SERIAL_PORT, BITSPERSECOND)  + '<br>'
                 time.sleep(1.0) # allow some time to receive a prompt/welcome
@@ -421,7 +396,7 @@ def file_reader():
 ### Setup Argument Parser
 argparser = argparse.ArgumentParser(description='Run LaserRaptor.', prog='LaserRaptor')
 argparser.add_argument('port', metavar='serial_port', nargs='?', default=False,
-                    help='serial port to the LaserRaptor')
+                    help='serial port for the SmoothieBoard')
 argparser.add_argument('-v', '--version', action='version', version='%(prog)s ' + VERSION)
 argparser.add_argument('-p', '--public', dest='host_on_all_interfaces', action='store_true',
                     default=False, help='bind to all network devices (default: bind to 127.0.0.1)')
@@ -429,194 +404,26 @@ argparser.add_argument('-l', '--list', dest='list_serial_devices', action='store
                     default=False, help='list all serial devices currently connected')
 argparser.add_argument('-d', '--debug', dest='debug', action='store_true',
                     default=False, help='print more verbose for debugging')
-argparser.add_argument('--beaglebone', dest='beaglebone', action='store_true',
-                    default=False, help='use this for running on beaglebone')
-argparser.add_argument('--raspberrypi', dest='raspberrypi', action='store_true',
-                    default=False, help='use this for running on Raspberry Pi')
-argparser.add_argument('-m', '--match', dest='match',
-                    default=GUESS_PREFIX, help='match serial device with this string')
 args = argparser.parse_args()
-
 
 
 print "LaserRaptor " + VERSION
 
-if args.beaglebone:
-    HARDWARE = 'beaglebone'
-    NETWORK_PORT = 80
-    SERIAL_PORT = "/dev/ttyO1"
-
-    ### if running on beaglebone, setup (pin muxing) and use UART1
-    # for details see: http://www.nathandumont.com/node/250
-    if os.path.exists("/sys/kernel/debug/omap_mux/uart1_txd"):
-        # echo 0 > /sys/kernel/debug/omap_mux/uart1_txd
-        fw = file("/sys/kernel/debug/omap_mux/uart1_txd", "w")
-        fw.write("%X" % (0))
-        fw.close()
-        # echo 20 > /sys/kernel/debug/omap_mux/uart1_rxd
-        fw = file("/sys/kernel/debug/omap_mux/uart1_rxd", "w")
-        fw.write("%X" % ((1 << 5) | 0))
-        fw.close()
-
-    ### if running on BBB/Ubuntu 14.04, setup pin muxing UART1
-    pin24list = glob.glob("/sys/devices/ocp.*/P9_24_pinmux.*/state")
-    for pin24 in pin24list:
-        os.system("echo uart > %s" % (pin24))
-
-    pin26list = glob.glob("/sys/devices/ocp.*/P9_26_pinmux.*/state")
-    for pin26 in pin26list:
-        os.system("echo uart > %s" % (pin26))
-
-
-    ### Set up atmega328 reset control
-    # The reset pin is connected to GPIO2_7 (2*32+7 = 71).
-    # Setting it to low triggers a reset.
-    # echo 71 > /sys/class/gpio/export
-
-    ### if running on BBB/Ubuntu 14.04, setup pin muxing GPIO2_7 (pin 46)
-    pin46list = glob.glob("/sys/devices/ocp.*/P8_46_pinmux.*/state")
-    for pin46 in pin46list:
-        os.system("echo gpio > %s" % (pin46))
-
-    try:
-        fw = file("/sys/class/gpio/export", "w")
-        fw.write("%d" % (71))
-        fw.close()
-    except IOError:
-        # probably already exported
-        pass
-    # set the gpio pin to output
-    # echo out > /sys/class/gpio/gpio71/direction
-    fw = file("/sys/class/gpio/gpio71/direction", "w")
-    fw.write("out")
-    fw.close()
-    # set the gpio pin high
-    # echo 1 > /sys/class/gpio/gpio71/value
-    fw = file("/sys/class/gpio/gpio71/value", "w")
-    fw.write("1")
-    fw.flush()
-    fw.close()
-
-
-    ### Set up atmega328 reset control - BeagleBone Black
-    # The reset pin is connected to GPIO2_9 (2*32+9 = 73).
-    # Setting it to low triggers a reset.
-    # echo 73 > /sys/class/gpio/export
-
-    ### if running on BBB/Ubuntu 14.04, setup pin muxing GPIO2_9 (pin 44)
-    pin44list = glob.glob("/sys/devices/ocp.*/P8_44_pinmux.*/state")
-    for pin44 in pin44list:
-        os.system("echo gpio > %s" % (pin44))
-
-    try:
-        fw = file("/sys/class/gpio/export", "w")
-        fw.write("%d" % (73))
-        fw.close()
-    except IOError:
-        # probably already exported
-        pass
-    # set the gpio pin to output
-    # echo out > /sys/class/gpio/gpio73/direction
-    fw = file("/sys/class/gpio/gpio73/direction", "w")
-    fw.write("out")
-    fw.close()
-    # set the gpio pin high
-    # echo 1 > /sys/class/gpio/gpio73/value
-    fw = file("/sys/class/gpio/gpio73/value", "w")
-    fw.write("1")
-    fw.flush()
-    fw.close()
-
-
-    ### read stepper driver configure pin GPIO2_12 (2*32+12 = 76).
-    # Low means Geckos, high means SMC11s
-
-    ### if running on BBB/Ubuntu 14.04, setup pin muxing GPIO2_12 (pin 39)
-    pin39list = glob.glob("/sys/devices/ocp.*/P8_39_pinmux.*/state")
-    for pin39 in pin39list:
-        os.system("echo gpio > %s" % (pin39))
-
-    try:
-        fw = file("/sys/class/gpio/export", "w")
-        fw.write("%d" % (76))
-        fw.close()
-    except IOError:
-        # probably already exported
-        pass
-    # set the gpio pin to input
-    fw = file("/sys/class/gpio/gpio76/direction", "w")
-    fw.write("in")
-    fw.close()
-    # set the gpio pin high
-    fw = file("/sys/class/gpio/gpio76/value", "r")
-    ret = fw.read()
-    fw.close()
-    print "Stepper driver configure pin is: " + str(ret)
-
-elif args.raspberrypi:
-    HARDWARE = 'raspberrypi'
-    NETWORK_PORT = 80
-    SERIAL_PORT = "/dev/ttyAMA0"
-    import RPi.GPIO as GPIO
-    # GPIO.setwarnings(False) # surpress warnings
-    GPIO.setmode(GPIO.BCM)  # use chip pin number
-    pinSense = 7
-    pinReset = 2
-    pinExt1 = 3
-    pinExt2 = 4
-    pinExt3 = 17
-    pinTX = 14
-    pinRX = 15
-    # read sens pin
-    GPIO.setup(pinSense, GPIO.IN)
-    isSMC11 = GPIO.input(pinSense)
-    # atmega reset pin
-    GPIO.setup(pinReset, GPIO.OUT)
-    GPIO.output(pinReset, GPIO.HIGH)
-    # no need to setup the serial pins
-    # although /boot/cmdline.txt and /etc/inittab needs
-    # to be edited to deactivate the serial terminal login
-    # (basically anything related to ttyAMA0)
-
-
 if args.list_serial_devices:
     SerialManager.list_devices(BITSPERSECOND)
 else:
-    if not SERIAL_PORT:
-        if args.port:
-            # (1) get the serial device from the argument list
-            SERIAL_PORT = args.port
-            print "Using serial device '"+ SERIAL_PORT +"' from command line."
-        else:
-            # (2) get the serial device from the config file
-            if os.path.isfile(CONFIG_FILE):
-                fp = open(CONFIG_FILE)
-                line = fp.readline().strip()
-                if len(line) > 3:
-                    SERIAL_PORT = line
-                    print "Using serial device '"+ SERIAL_PORT +"' from '" + CONFIG_FILE + "'."
-
-    if not SERIAL_PORT:
-        if args.match:
-            GUESS_PREFIX = args.match
-            SERIAL_PORT = SerialManager.match_device(GUESS_PREFIX, BITSPERSECOND)
-            if SERIAL_PORT:
-                print "Using serial device '"+ str(SERIAL_PORT)
-                if os.name == 'posix':
-                    # not for windows for now
-                    print "(first device to match: " + args.match + ")"
-        else:
-            SERIAL_PORT = SerialManager.match_device(GUESS_PREFIX, BITSPERSECOND)
-            if SERIAL_PORT:
-                print "Using serial device '"+ str(SERIAL_PORT) +"' by best guess."
+    if args.port:
+        # (1) get the serial device from the argument list
+        SERIAL_PORT = args.port
+        print "Using serial device '"+ SERIAL_PORT +"' from command line."
+    elif os.path.exists(SMOOTHIE_PORT):
+        SERIAL_PORT = SMOOTHIE_PORT
 
     if not SERIAL_PORT:
         print "-----------------------------------------------------------------------------"
         print "WARNING: LaserRaptor doesn't know what serial device to connect to!"
-        print "Make sure the LaserRaptor hardware is connected to the USB interface."
-        if os.name == 'nt':
-            print "ON WINDOWS: You will also need to setup the virtual com port."
-            print "See 'Installing Drivers': http://arduino.cc/en/Guide/Windows"
+        print "Make sure the SmoothieBoard hardware is connected to the USB interface,"
+        print "or specify a different port with --port."
         print "-----------------------------------------------------------------------------"
 
     # run
