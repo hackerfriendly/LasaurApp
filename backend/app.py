@@ -9,7 +9,7 @@ from serial_manager import SerialManager
 from filereaders import read_svg, read_dxf, read_ngc
 
 APPNAME = "LaserRaptor"
-VERSION = "14.11b"
+VERSION = "0.0.1"
 COMPANY_NAME = "com.hackerfriendly"
 SERIAL_PORT = None
 SMOOTHIE_PORT = "/dev/ttyACM0"
