@@ -3,7 +3,6 @@ import os
 import sys
 import time
 import serial
-from serial.tools import list_ports
 from collections import deque
 
 
@@ -61,27 +60,6 @@ class SerialManagerClass:
 			'firmware_version': None
 		}
 
-
-
-	def list_devices(self, baudrate):
-		ports = []
-		iterator = sorted(list_ports.grep('tty'))
-		print "Found ports:"
-		for port, desc, hwid in iterator:
-			ports.append(port)
-			print "%-20s" % (port,)
-			print "    desc: %s" % (desc,)
-			print "    hwid: %s" % (hwid,)
-		return ports
-
-	def match_device(self, search_regex, baudrate):
-		matched_ports = list_ports.grep(search_regex)
-		if matched_ports:
-			for match_tuple in matched_ports:
-				if match_tuple:
-					return match_tuple[0]
-		print "No serial port match for anything like: " + search_regex
-		return None
 
 	def connect(self, port, baudrate):
 		self.rx_buffer = ""
