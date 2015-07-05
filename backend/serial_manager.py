@@ -32,10 +32,6 @@ class SerialManagerClass:
 		self.fec_redundancy = 0  # use forward error correction
 		# self.fec_redundancy = 1  # use error detection
 
-		# self.ready_char = '\x12'
-		self.ready_char = '\n'
-
-
 	def reset_status(self):
 		self.status = {
 			'ready': True,  # turns True by querying status
@@ -185,12 +181,6 @@ class SerialManagerClass:
 				### receiving
 				chars = self.device.read(self.RX_CHUNK_SIZE)
 				if len(chars) > 0:
-					## check for data request
-					if self.ready_char in chars:
-						print "=========================== READY"
-						self.nRequested = self.TX_CHUNK_SIZE
-						#remove control chars
-						chars = chars.replace(self.ready_char, "")
 					## assemble lines
 					self.rx_buffer += chars
 					while(1):  # process all lines in buffer
