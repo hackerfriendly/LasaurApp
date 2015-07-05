@@ -409,10 +409,10 @@ $(document).ready(function(){
 
   $("#cancel_btn").tooltip({placement:'bottom', delay: {show:500, hide:100}});
   $("#cancel_btn").click(function(e){
-    var gcode = 'M112'  // enter stop state
+    var gcode = 'M112\n'  // enter stop state
     send_gcode(gcode, "Stopping ...", false);
     var delayedresume = setTimeout(function() {
-      var gcode = 'M999' // reset
+      var gcode = 'M999\n' // reset
       send_gcode(gcode, "Ready.", false);
     }, 1000);
     e.preventDefault();
@@ -420,10 +420,10 @@ $(document).ready(function(){
 
   $("#homing_cycle").tooltip({placement:'bottom', delay: {show:500, hide:100}});
   $("#homing_cycle").click(function(e){
-    var gcode = 'M112'  // enter stop state
+    var gcode = 'M112\n'  // enter stop state
     send_gcode(gcode, "Stopping ...", false);
     var delayedresume = setTimeout(function() {
-      var gcode = 'M999\nG28' // reset and re-home
+      var gcode = 'M999\nG28\n' // reset and re-home
       send_gcode(gcode, "Homing cycle ...", false);
     }, 1000);
     e.preventDefault();
