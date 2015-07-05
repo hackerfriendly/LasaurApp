@@ -159,6 +159,7 @@ class SerialManagerClass:
 				chars = self.device.read(self.RX_CHUNK_SIZE)
 				if len(chars) > 0:
 					print "got %d chars" % len(chars)
+					self.nRequested = self.TX_CHUNK_SIZE
 					## assemble lines
 					self.rx_buffer += chars
 					while(1):  # process all lines in buffer
