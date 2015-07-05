@@ -96,10 +96,10 @@ class SerialManagerClass:
 		return bool(self.device)
 
 	def get_hardware_status(self):
-		if self.is_queue_empty():
-			# trigger a status report
-			# will update for the next status request
-			self.queue_gcode('?')
+		# if self.is_queue_empty():
+		# 	# trigger a status report
+		# 	# will update for the next status request
+		# 	self.queue_gcode('?')
 		return self.status
 
 
