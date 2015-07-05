@@ -33,12 +33,7 @@ class SerialManagerClass:
 		# self.fec_redundancy = 1  # use error detection
 
 		# self.ready_char = '\x12'
-		# self.request_ready_char = '\x14'
-
 		self.ready_char = '\n'
-		self.request_ready_char = '>'
-		self.last_request_ready = 0
-
 
 
 	def reset_status(self):
@@ -116,7 +111,7 @@ class SerialManagerClass:
 		lines = gcode.split('\n')
 		# print "Adding to queue %s lines" % len(lines)
 		print "Adding to queue:"
-		print gcode
+		print lines
 		job_list = []
 		for line in lines:
 			line = line.strip()
@@ -150,14 +145,12 @@ class SerialManagerClass:
 
 		gcode_processed = '\n'.join(job_list) + '\n'
 		self.tx_buffer += gcode_processed
-		print 'job active after queuing gcode'
 		self.job_active = True
 
 
 	def cancel_queue(self):
 		self.tx_buffer = ""
 		self.tx_index = 0
-		print 'job inactive after cancel'
 		self.job_active = False
 
 
@@ -207,6 +200,7 @@ class SerialManagerClass:
 						else:  # we got a line
 							line = self.rx_buffer[:posNewline]
 							self.rx_buffer = self.rx_buffer[posNewline+1:]
+						print "received: " + line
 						self.process_status_line(line)
 				else:
 					if self.nRequested == 0:
@@ -229,39 +223,6 @@ class SerialManagerClass:
 							sys.stdout.flush()
 						self.tx_index += actuallySent
 						self.nRequested -= actuallySent
-						if self.nRequested <= 0:
-							self.last_request_ready = 0  # make sure to request ready
-					elif self.tx_buffer[self.tx_index] in ['!', '~']:  # send control chars no matter what
-						try:
-							t_prewrite = time.time()
-							actuallySent = self.device.write(self.tx_buffer[self.tx_index])
-							if time.time()-t_prewrite > 0.02:
-								sys.stdout.write("WARN: write delay 2\n")
-								sys.stdout.flush()
-						except serial.SerialTimeoutException:
-							actuallySent = 0  # assume nothing has been sent
-							sys.stdout.write("\nsend_queue_as_ready: writeTimeoutError\n")
-							sys.stdout.flush()
-						self.tx_index += actuallySent
-					else:
-						if (time.time()-self.last_request_ready) > 2.0:
-							# ask to send a ready byte
-							# only ask for this when sending is on hold
-							# only ask once (and after a big time out)
-							# print "=========================== REQUEST READY"
-							try:
-								t_prewrite = time.time()
-								actuallySent = self.device.write(self.request_ready_char)
-								if time.time()-t_prewrite > 0.02:
-									sys.stdout.write("WARN: write delay 3\n")
-									sys.stdout.flush()
-							except serial.SerialTimeoutException:
-								# skip, report
-								actuallySent = self.nRequested  # pyserial does not report this sufficiently
-								sys.stdout.write("\nsend_queue_as_ready: writeTimeoutError, on ready request\n")
-								sys.stdout.flush()
-							if actuallySent == 1:
-								self.last_request_ready = time.time()
 
 				else:
 					if self.job_active:
