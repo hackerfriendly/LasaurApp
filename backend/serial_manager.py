@@ -239,7 +239,9 @@ class SerialManagerClass:
 
 	def process_status_line(self, line):
 		print 'processing status line: ' + line
-		if '#' in line[:3]:
+		if line == 'ok':
+			print 'All good.'
+		elif '#' in line[:3]:
 			# print and ignore
 			sys.stdout.write(line + "\n")
 			sys.stdout.flush()
