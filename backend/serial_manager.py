@@ -114,30 +114,7 @@ class SerialManagerClass:
 			if line == '' or line[0] == '%':
 				continue
 
-			if line[0] == '!':
-				self.cancel_queue()
-				self.reset_status()
-				job_list.append('!')
-			else:
-				# if line != '?':  # not ready unless just a ?-query
-				# 	self.status['ready'] = False
-
-				if self.fec_redundancy > 0:  # using error correction
-					# prepend marker and checksum
-					checksum = 0
-					for c in line:
-						ascii_ord = ord(c)
-						if ascii_ord > ord(' ') and c != '~' and c != '!':  #ignore 32 and lower, ~, !
-							checksum += ascii_ord
-							if checksum >= 128:
-								checksum -= 128
-					checksum = (checksum >> 1) + 128
-					line_redundant = ""
-					for n in range(self.fec_redundancy-1):
-						line_redundant += '^' + chr(checksum) + line + '\n'
-					line = line_redundant + '*' + chr(checksum) + line
-
-				job_list.append(line)
+			job_list.append(line)
 
 		gcode_processed = '\n'.join(job_list) + '\n'
 		self.tx_buffer += gcode_processed
@@ -202,6 +179,7 @@ class SerialManagerClass:
 					if self.nRequested > 0:
 						try:
 							t_prewrite = time.time()
+							print "sending: " + self.tx_buffer[self.tx_index:self.tx_index+self.nRequested]
 							actuallySent = self.device.write(
 								self.tx_buffer[self.tx_index:self.tx_index+self.nRequested])
 							if time.time()-t_prewrite > 0.02:
