@@ -413,6 +413,7 @@ $(document).ready(function(){
     send_gcode(gcode, "Stopping ...", false);
     var delayedresume = setTimeout(function() {
       var gcode = 'M999' // reset
+      send_gcode(gcode, "Ready.", false);
     }, 1000);
     e.preventDefault();
   });
