@@ -413,7 +413,7 @@ $(document).ready(function(){
     // $().uxmessage('notice', gcode.replace(/\n/g, '<br>'));
     send_gcode(gcode, "Stopping ...", false);
     var delayedresume = setTimeout(function() {
-      var gcode = 'G28'  // ~ is resume char
+      var gcode = 'M999\nG28'  // ~ is resume char
       // $().uxmessage('notice', gcode.replace(/\n/g, '<br>'));
       send_gcode(gcode, "Resetting ...", false);
     }, 1000);
@@ -426,7 +426,7 @@ $(document).ready(function(){
     // $().uxmessage('notice', gcode.replace(/\n/g, '<br>'));
     send_gcode(gcode, "Resetting ...", false);
     var delayedresume = setTimeout(function() {
-      var gcode = 'G28'  // ~ is resume char
+      var gcode = 'M999\nG28'  // ~ is resume char
       // $().uxmessage('notice', gcode.replace(/\n/g, '<br>'));
       send_gcode(gcode, "Homing cycle ...", false);
     }, 1000);
