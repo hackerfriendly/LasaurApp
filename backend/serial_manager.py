@@ -78,7 +78,7 @@ class SerialManagerClass:
 				self.device = None
 			except:
 				self.device = None
-			self.status['ready'] = False
+			# self.status['ready'] = False
 			return True
 		else:
 			return False
@@ -119,8 +119,8 @@ class SerialManagerClass:
 				self.reset_status()
 				job_list.append('!')
 			else:
-				if line != '?':  # not ready unless just a ?-query
-					self.status['ready'] = False
+				# if line != '?':  # not ready unless just a ?-query
+				# 	self.status['ready'] = False
 
 				if self.fec_redundancy > 0:  # using error correction
 					# prepend marker and checksum
@@ -192,7 +192,7 @@ class SerialManagerClass:
 							line = self.rx_buffer[:posNewline]
 							self.rx_buffer = self.rx_buffer[posNewline+1:]
 						print "received: " + line
-						self.process_status_line(line)
+						self.process_status_line(line.rstrip())
 				else:
 					if self.nRequested == 0:
 						time.sleep(0.001)  # no rx/tx, rest a bit
@@ -231,9 +231,9 @@ class SerialManagerClass:
 			except ValueError:
 				# Serial port appears closed => reset
 				self.close()
-		else:
-			# no device, or paused
-			self.status['ready'] = False
+		# else:
+		# 	# no device, or paused
+		# 	self.status['ready'] = False
 
 
 
@@ -253,7 +253,7 @@ class SerialManagerClass:
 				# in stop mode
 				self.cancel_queue()
 				# not ready whenever in stop mode
-				self.status['ready'] = False
+				# self.status['ready'] = False
 				sys.stdout.write(line + "\n")
 				sys.stdout.flush()
 			else:
