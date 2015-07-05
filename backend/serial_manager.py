@@ -109,7 +109,7 @@ class SerialManagerClass:
 				### receiving
 				reply = self.device.read()
 				if len(reply) > 0:
-					self.process_status_line(reply.rsplit())
+					self.process_status_line(reply.rstrip())
 				else:
 					time.sleep(0.001)  # no rx/tx, rest a bit
 
