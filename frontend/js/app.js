@@ -410,12 +410,9 @@ $(document).ready(function(){
   $("#cancel_btn").tooltip({placement:'bottom', delay: {show:500, hide:100}});
   $("#cancel_btn").click(function(e){
     var gcode = 'M112'  // enter stop state
-    // $().uxmessage('notice', gcode.replace(/\n/g, '<br>'));
     send_gcode(gcode, "Stopping ...", false);
     var delayedresume = setTimeout(function() {
-      var gcode = 'M999\nG28'  // ~ is resume char
-      // $().uxmessage('notice', gcode.replace(/\n/g, '<br>'));
-      send_gcode(gcode, "Resetting ...", false);
+      var gcode = 'M999' // reset
     }, 1000);
     e.preventDefault();
   });
@@ -423,11 +420,9 @@ $(document).ready(function(){
   $("#homing_cycle").tooltip({placement:'bottom', delay: {show:500, hide:100}});
   $("#homing_cycle").click(function(e){
     var gcode = 'M112'  // enter stop state
-    // $().uxmessage('notice', gcode.replace(/\n/g, '<br>'));
-    send_gcode(gcode, "Resetting ...", false);
+    send_gcode(gcode, "Stopping ...", false);
     var delayedresume = setTimeout(function() {
-      var gcode = 'M999\nG28'  // ~ is resume char
-      // $().uxmessage('notice', gcode.replace(/\n/g, '<br>'));
+      var gcode = 'M999\nG28' // reset and re-home
       send_gcode(gcode, "Homing cycle ...", false);
     }, 1000);
     e.preventDefault();
