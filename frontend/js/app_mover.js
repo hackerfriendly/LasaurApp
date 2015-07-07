@@ -1,5 +1,6 @@
 
 var gcode_coordinate_offset = undefined;
+var offsetEnabled = false;
 
 function reset_offset() {
   $("#offset_area").hide();
@@ -8,6 +9,7 @@ function reset_offset() {
   $("#cutting_area").css('border', '1px dashed #ff0000');
   $("#offset_area").css('border', '1px dashed #aaaaaa');
   send_gcode('G28\nG92X0Y0\n', "Offset reset.", false);
+  offsetEnabled = false;
   $('#coordinates_info').text('');
 }
 
@@ -123,16 +125,17 @@ $(document).ready(function(){
       gcode_coordinate_offset = [x,y];
       var x_phy = x*app_settings.to_physical_scale + app_settings.table_offset[0];
       var y_phy = y*app_settings.to_physical_scale + app_settings.table_offset[1];
-      var gcode = 'G28\nG0X'+ x_phy.toFixed(app_settings.num_digits) + 
+      if(offsetEnabled) {
+        send_gcode('G28\n', 'Going to machine home ...', false);
+      }
+      var gcode = 'G0X'+ x_phy.toFixed(app_settings.num_digits) + 
                   'Y' + y_phy.toFixed(app_settings.num_digits) + '\nG92X0Y0\n';
       send_gcode(gcode, "Offset set.", false);
+      offsetEnabled = true;
       $(this).css('border', '1px dashed #aaaaaa');
       $("#offset_area").css('border', '1px dashed #ff0000');
     }
   }
-  
-
-
   
   $("#cutting_area").mousedown(function() {
     isDragging = true;
