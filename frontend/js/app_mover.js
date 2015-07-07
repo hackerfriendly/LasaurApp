@@ -7,7 +7,7 @@ function reset_offset() {
   gcode_coordinate_offset = undefined;
   $("#cutting_area").css('border', '1px dashed #ff0000');
   $("#offset_area").css('border', '1px dashed #aaaaaa');
-  send_gcode('G54\n', "Offset reset.", false);
+  send_gcode('G28\nG92X0Y0\n', "Offset reset.", false);
   $('#coordinates_info').text('');
 }
 
@@ -123,8 +123,8 @@ $(document).ready(function(){
       gcode_coordinate_offset = [x,y];
       var x_phy = x*app_settings.to_physical_scale + app_settings.table_offset[0];
       var y_phy = y*app_settings.to_physical_scale + app_settings.table_offset[1];
-      var gcode = 'G10 L2 P1 X'+ x_phy.toFixed(app_settings.num_digits) + 
-                  ' Y' + y_phy.toFixed(app_settings.num_digits) + '\nG55\n';
+      var gcode = 'G28\nG0X'+ x_phy.toFixed(app_settings.num_digits) + 
+                  'Y' + y_phy.toFixed(app_settings.num_digits) + '\nG92X0Y0\n';
       send_gcode(gcode, "Offset set.", false);
       $(this).css('border', '1px dashed #aaaaaa');
       $("#offset_area").css('border', '1px dashed #ff0000');
