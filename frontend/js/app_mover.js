@@ -62,8 +62,8 @@ $(document).ready(function(){
     var air_assist_off = '';
     if($('#feed_btn').hasClass("active")){
       g0_or_g1 = 'G1';
-      air_assist_on = 'M80\n';
-      air_assist_off = 'M81\n';
+      air_assist_on = 'M106\n';
+      air_assist_off = 'M107\n';
     }
     var feedrate = DataHandler.mapConstrainFeedrate($("#feedrate_field" ).val());
     var intensity =  DataHandler.mapConstrainIntesity($( "#intensity_field" ).val());
