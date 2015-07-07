@@ -420,12 +420,17 @@ $(document).ready(function(){
 
   $("#homing_cycle").tooltip({placement:'bottom', delay: {show:500, hide:100}});
   $("#homing_cycle").click(function(e){
-    var gcode = 'M112'  // enter stop state
-    send_gcode(gcode, "Stopping ...", false);
+    send_gcode('M112', "Stopping ...", false);
     var delayedresume = setTimeout(function() {
-      var gcode = 'M999\nG28' // reset and re-home
-      send_gcode(gcode, "Homing cycle ...", false);
+      send_gcode('M999', "Starting ...", false);
+      if(offsetEnabled) {
+        reset_offset();
+      }
+      else {
+        send_gcode('G28', "Going home ...", false);
+      }
     }, 1000);
+
     e.preventDefault();
 
   });
