@@ -436,6 +436,6 @@ else:
 			print "Data root is: " + sys._MEIPASS
 
 	if args.host_on_all_interfaces:
-		run_with_callback('', NETWORK_PORT)
+		run_with_callback('', 80)
 	else:
 		run_with_callback('127.0.0.1', NETWORK_PORT)
