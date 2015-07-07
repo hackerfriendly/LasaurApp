@@ -1,5 +1,6 @@
 
 import os
+import re
 import sys
 import time
 import serial
@@ -34,7 +35,7 @@ class SerialManagerClass:
 
 	def reset_status(self):
 		self.status = {
-			'ready': True,  # turns True by querying status
+			'ready': False,  # ready after 'ok'
 			'paused': False,  # this is also a control flag
 			'buffer_overflow': False,
 			'transmission_error': False,
@@ -78,7 +79,6 @@ class SerialManagerClass:
 				self.device = None
 			except:
 				self.device = None
-			# self.status['ready'] = False
 			return True
 		else:
 			return False
@@ -105,9 +105,8 @@ class SerialManagerClass:
 
 	def queue_gcode(self, gcode):
 		lines = gcode.split('\n')
-		# print "Adding to queue %s lines" % len(lines)
-		print "Adding to queue:"
-		print lines
+		# print "Adding to queue:"
+		# print lines
 		job_list = []
 		for line in lines:
 			line = line.strip()
@@ -125,6 +124,7 @@ class SerialManagerClass:
 		self.tx_buffer = ""
 		self.tx_index = 0
 		self.job_active = False
+		self.status['ready'] = False
 
 
 	def is_queue_empty(self):
@@ -158,7 +158,6 @@ class SerialManagerClass:
 				### receiving
 				chars = self.device.read(self.RX_CHUNK_SIZE)
 				if len(chars) > 0:
-					print "got %d chars" % len(chars)
 					self.nRequested = self.TX_CHUNK_SIZE
 					## assemble lines
 					self.rx_buffer += chars
@@ -169,7 +168,7 @@ class SerialManagerClass:
 						else:  # we got a line
 							line = self.rx_buffer[:posNewline]
 							self.rx_buffer = self.rx_buffer[posNewline+1:]
-						print "received: " + line
+						# print "received: " + line
 						self.process_status_line(line.rstrip())
 				else:
 					if self.nRequested == 0:
@@ -180,7 +179,7 @@ class SerialManagerClass:
 					if self.nRequested > 0:
 						try:
 							t_prewrite = time.time()
-							print "sending: " + self.tx_buffer[self.tx_index:self.tx_index+self.nRequested]
+							print "> " + self.tx_buffer[self.tx_index:self.tx_index+self.nRequested]
 							actuallySent = self.device.write(
 								self.tx_buffer[self.tx_index:self.tx_index+self.nRequested])
 							if time.time()-t_prewrite > 0.02:
@@ -200,9 +199,8 @@ class SerialManagerClass:
 						# print "(LasaurGrbl may take some extra time to finalize)"
 						self.tx_buffer = ""
 						self.tx_index = 0
-						print 'job no longer active, ready now.'
 						self.job_active = False
-						# ready whenever a job is done, including a status request via '?'
+						# ready whenever a job is done
 						self.status['ready'] = True
 			except OSError:
 				# Serial port appears closed => reset
@@ -210,92 +208,54 @@ class SerialManagerClass:
 			except ValueError:
 				# Serial port appears closed => reset
 				self.close()
-		# else:
-		# 	# no device, or paused
-		# 	self.status['ready'] = False
-
 
 
 	def process_status_line(self, line):
-		print 'processing status line: ' + line
 		if line == 'ok':
-			print 'All good.'
-		elif '#' in line[:3]:
-			# print and ignore
-			sys.stdout.write(line + "\n")
-			sys.stdout.flush()
-		elif '^' in line:
-			sys.stdout.write("\nFEC Correction!\n")
-			sys.stdout.flush()
+			print '< ok'
+			self.status['ready'] = True
+			return
+
+		if re.match(r"Limit switch (.*) was hit", line):  # Stop: A limit was hit
+			self.status['limit_hit'] = True
+			self.cancel_queue()
 		else:
-			if '!' in line:
-				# in stop mode
-				self.cancel_queue()
-				# not ready whenever in stop mode
-				# self.status['ready'] = False
-				sys.stdout.write(line + "\n")
-				sys.stdout.flush()
-			else:
-				sys.stdout.write(".")
-				sys.stdout.flush()
+			self.status['limit_hit'] = False
 
-			if 'N' in line:
-				self.status['bad_number_format_error'] = True
-			if 'E' in line:
-				self.status['expected_command_letter_error'] = True
-			if 'U' in line:
-				self.status['unsupported_statement_error'] = True
+		if '!!' in line:
+			# halted!
+			self.cancel_queue()
 
-			if 'B' in line:  # Stop: Buffer Overflow
-				self.status['buffer_overflow'] = True
-			else:
-				self.status['buffer_overflow'] = False
+		sys.stdout.write("< %s\n" % line)
+		sys.stdout.flush()
 
-			if 'T' in line:  # Stop: Transmission Error
-				self.status['transmission_error'] = True
-			else:
-				self.status['transmission_error'] = False
-
-			if 'P' in line:  # Stop: Power is off
-				self.status['power_off'] = True
-			else:
-				self.status['power_off'] = False
-
-			if 'L' in line:  # Stop: A limit was hit
-				self.status['limit_hit'] = True
-			else:
-				self.status['limit_hit'] = False
-
-			if 'R' in line:  # Stop: by serial requested
-				self.status['serial_stop_request'] = True
-			else:
-				self.status['serial_stop_request'] = False
-
-			if 'D' in line:  # Warning: Door Open
-				self.status['door_open'] = True
-			else:
-				self.status['door_open'] = False
-
-			if 'C' in line:  # Warning: Chiller Off
-				self.status['chiller_off'] = True
-			else:
-				self.status['chiller_off'] = False
-
-			if 'X' in line:
-				self.status['x'] = line[line.find('X')+1:line.find('Y')]
+			# if 'P' in line:  # Stop: Power is off
+			# 	self.status['power_off'] = True
 			# else:
-			#     self.status['x'] = False
+			# 	self.status['power_off'] = False
 
-			if 'Y' in line:
-				self.status['y'] = line[line.find('Y')+1:line.find('V')]
+			# if 'D' in line:  # Warning: Door Open
+			# 	self.status['door_open'] = True
 			# else:
-			#     self.status['y'] = False
+			# 	self.status['door_open'] = False
 
-			if 'V' in line:
-				self.status['firmware_version'] = line[line.find('V')+1:]
+			# if 'C' in line:  # Warning: Chiller Off
+			# 	self.status['chiller_off'] = True
+			# else:
+			# 	self.status['chiller_off'] = False
 
+			# if 'X' in line:
+			# 	self.status['x'] = line[line.find('X')+1:line.find('Y')]
+			# # else:
+			# #     self.status['x'] = False
 
+			# if 'Y' in line:
+			# 	self.status['y'] = line[line.find('Y')+1:line.find('V')]
+			# # else:
+			# #     self.status['y'] = False
 
+			# if 'V' in line:
+			# 	self.status['firmware_version'] = line[line.find('V')+1:]
 
 
 # singelton
