@@ -27,7 +27,7 @@ $(document).ready(function(){
   $('#y_location_field').val('');
 
   var isDragging = false;
-  
+
   function assemble_and_send_gcode(x, y, do_not_scale) {
     // x or y can be NaN or null
     // this allows for moving only along x or y
@@ -64,23 +64,26 @@ $(document).ready(function(){
     var air_assist_off = '';
     if($('#feed_btn').hasClass("active")){
       g0_or_g1 = 'G1';
-      air_assist_on = 'M106\n';
-      air_assist_off = 'M107\n';
+      air_assist_on = 'M106';
+      air_assist_off = 'M107';
     }
     var feedrate = DataHandler.mapConstrainFeedrate($("#feedrate_field" ).val());
     var intensity =  DataHandler.mapConstrainIntensity($( "#intensity_field" ).val());
-    var gcode = 'G90\n'+air_assist_on+'S'+ intensity + '\n' + g0_or_g1;
+    var gcode = 'G90\n'+air_assist_on+'\n' + g0_or_g1;
     if (!(isNaN(x_phy)) && x_phy != null) {
       gcode += 'X' + x_phy.toFixed(app_settings.num_digits);
     }
     if (!(isNaN(y_phy)) && y_phy != null) {
       gcode += 'Y' + y_phy.toFixed(app_settings.num_digits)
     }
-    gcode += 'F' + feedrate + '\nS0\n'+air_assist_off; 
+    if (g0_or_g1 == 'G1') {
+      gcode += 'F' + feedrate + 'S' + intensity + "\n";
+    }
+    gcode += air_assist_off;
     // $().uxmessage('notice', gcode);
-    send_gcode(gcode, "Motion request sent.", false);    
+    send_gcode(gcode, "Motion request sent.", false);
   }
-  
+
   function assemble_info_text(x,y) {
     var x_phy = x*app_settings.to_physical_scale;
     var y_phy = y*app_settings.to_physical_scale;
@@ -93,12 +96,12 @@ $(document).ready(function(){
     var intensity =  DataHandler.mapConstrainIntensity($( "#intensity_field" ).val());
     var coords_text;
     if (move_or_cut == 'cut') {
-      coords_text = move_or_cut + ' to (' + 
-                    x_phy.toFixed(0) + ', '+ 
-                    y_phy.toFixed(0) + ') at ' + 
+      coords_text = move_or_cut + ' to (' +
+                    x_phy.toFixed(0) + ', '+
+                    y_phy.toFixed(0) + ') at ' +
                     feedrate + 'mm/min and ' + Math.round(intensity/2.55) + '% intensity';
     } else {
-      coords_text = move_or_cut + ' to (' + x_phy.toFixed(0) + ', '+ 
+      coords_text = move_or_cut + ' to (' + x_phy.toFixed(0) + ', '+
                     y_phy.toFixed(0) + ') at ' + feedrate + 'mm/min'
     }
     return coords_text;
@@ -128,7 +131,7 @@ $(document).ready(function(){
       if(offsetEnabled) {
         send_gcode('G28\n', 'Going to machine home ...', false);
       }
-      var gcode = 'G0X'+ x_phy.toFixed(app_settings.num_digits) + 
+      var gcode = 'G0X'+ x_phy.toFixed(app_settings.num_digits) +
                   'Y' + y_phy.toFixed(app_settings.num_digits) + '\nG92X0Y0\n';
       send_gcode(gcode, "Offset set.", false);
       offsetEnabled = true;
@@ -136,13 +139,13 @@ $(document).ready(function(){
       $("#offset_area").css('border', '1px dashed #ff0000');
     }
   }
-  
+
   $("#cutting_area").mousedown(function() {
     isDragging = true;
   }).mouseup(function() {
     isDragging = false;
   });
-  
+
 
   $("#cutting_area").click(function(e) {
     var offset = $(this).offset();
@@ -151,11 +154,11 @@ $(document).ready(function(){
 
     if(e.shiftKey) {
       assemble_and_set_offset(x,y);
-    } else if (!gcode_coordinate_offset) {  
+    } else if (!gcode_coordinate_offset) {
       assemble_and_send_gcode(x,y);
     } else {
       var pos = $("#offset_area").position()
-      if ((x < pos.left) || (y < pos.top)) {       
+      if ((x < pos.left) || (y < pos.top)) {
         //// reset offset
         reset_offset();
       }
@@ -173,11 +176,11 @@ $(document).ready(function(){
     },
     function () {
       $(this).css('border', '1px dashed #aaaaaa');
-      $(this).css('cursor', 'pointer'); 
-      $('#coordinates_info').text('');    
+      $(this).css('cursor', 'pointer');
+      $('#coordinates_info').text('');
     }
   );
-  
+
   $("#cutting_area").mousemove(function (e) {
     var offset = $(this).offset();
     var x = (e.pageX - offset.left);
@@ -196,7 +199,7 @@ $(document).ready(function(){
         coords_text = 'set offset to (' + x + ', '+ y + ')'
       } else {
         var pos = $("#offset_area").position()
-        if ((x < pos.left) || (y < pos.top)) {           
+        if ((x < pos.left) || (y < pos.top)) {
           coords_text = 'click to reset offset';
         } else {
           coords_text = '';
@@ -205,13 +208,13 @@ $(document).ready(function(){
     }
     $('#coordinates_info').text(coords_text);
   });
-  
-  
-  $("#offset_area").click(function(e) { 
+
+
+  $("#offset_area").click(function(e) {
     if(!e.shiftKey) {
       var offset = $(this).offset();
       var x = (e.pageX - offset.left);
-      var y = (e.pageY - offset.top);     
+      var y = (e.pageY - offset.top);
       assemble_and_send_gcode(x,y);
       return false
     }
@@ -221,10 +224,10 @@ $(document).ready(function(){
     function () {
     },
     function () {
-      $('#offset_info').text('');   
+      $('#offset_info').text('');
     }
   );
-  
+
   $("#offset_area").mousemove(function (e) {
     if(!e.shiftKey) {
       var offset = $(this).offset();
@@ -235,56 +238,56 @@ $(document).ready(function(){
       $('#offset_info').text('');
     }
   });
-  
-  
+
+
   /// motion parameters /////////////////////////
 
   $("#intensity_field" ).val('0');
   $("#feedrate_field" ).val(app_settings.max_seek_speed);
-  
+
   $("#seek_btn").click(function(e) {
     $("#intensity_field" ).hide();
     $("#intensity_field_disabled" ).show();
     $('#loc_move_cut_word').html('Move');
-  });  
+  });
   $("#feed_btn").click(function(e) {
     $("#intensity_field_disabled" ).hide();
     $("#intensity_field" ).show();
     $('#loc_move_cut_word').html('Cut');
-  });   
-  
+  });
+
   $("#feedrate_btn_slow").click(function(e) {
     $("#feedrate_field" ).val("600");
-  });  
+  });
   $("#feedrate_btn_medium").click(function(e) {
     $("#feedrate_field" ).val("2000");
-  });  
+  });
   $("#feedrate_btn_fast").click(function(e) {
     $("#feedrate_field" ).val(app_settings.max_seek_speed);
-  });  
+  });
   $("#feedrate_field").focus(function(e) {
     $("#feedrate_btn_slow").removeClass('active');
     $("#feedrate_btn_medium").removeClass('active');
     $("#feedrate_btn_fast").removeClass('active');
   });
-  
+
   if ($("#feedrate_field" ).val() != app_settings.max_seek_speed) {
     $("#feedrate_btn_slow").removeClass('active');
     $("#feedrate_btn_medium").removeClass('active');
-    $("#feedrate_btn_fast").removeClass('active');    
+    $("#feedrate_btn_fast").removeClass('active');
   }
-  
+
 
   /// jog buttons ///////////////////////////////
 
   $("#jog_up_btn").click(function(e) {
     var gcode = 'G91\nG0Y-10F6000\nG90\n';
     send_gcode(gcode, "Moving Up ...", false);
-  });   
+  });
   $("#jog_left_btn").click(function(e) {
     var gcode = 'G91\nG0X-10F6000\nG90\n';
     send_gcode(gcode, "Moving Left ...", false);
-  });   
+  });
   $("#jog_right_btn").click(function(e) {
     var gcode = 'G91\nG0X10F6000\nG90\n';
     send_gcode(gcode, "Moving Right ...", false);
@@ -384,7 +387,7 @@ $(document).ready(function(){
       return false;
     }
   });
-      
+
 
   /// numeral location buttons //////////////////
   $("#location_set_btn").click(function(e) {
@@ -392,7 +395,7 @@ $(document).ready(function(){
     var y = parseFloat($('#y_location_field').val());
     // NaN from parsing '' is ok
     assemble_and_send_gcode(x, y, true);
-  }); 
+  });
 
   $("#origin_set_btn").click(function(e) {
     var x_str = $('#x_location_field').val();
@@ -406,17 +409,17 @@ $(document).ready(function(){
     }
     var y = parseFloat(y_str)*app_settings.to_canvas_scale;
     assemble_and_set_offset(x, y);
-  });  
+  });
 
 
   /// air assist buttons ////////////////////////
 
   $("#air_on_btn").click(function(e) {
     var gcode = 'M80\n';
-    send_gcode(gcode, "Air assist on ...", false) 
-  });  
+    send_gcode(gcode, "Air assist on ...", false)
+  });
   $("#air_off_btn").click(function(e) {
     var gcode = 'M81\n';
-    send_gcode(gcode, "Air assist off ...", false) 
+    send_gcode(gcode, "Air assist off ...", false)
   });
 });  // ready

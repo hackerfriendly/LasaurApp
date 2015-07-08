@@ -107,7 +107,8 @@ DataHandler = {
       var colors = pass['colors'];
       var feedrate = this.mapConstrainFeedrate(pass['feedrate']);
       var intensity = this.mapConstrainIntensity(pass['intensity']);
-      glist.push("G1F"+feedrate+"\nS"+intensity+"\n");
+      // Smoothie is only modal for feedrate & intensity if actual G1 motion occurred.
+      // glist.push("G1F"+feedrate+"S"+intensity+"\n");
       for (var c=0; c<colors.length; c++) {
         var color = colors[c];
         var paths = this.paths_by_color[color];
@@ -118,14 +119,18 @@ DataHandler = {
             var x = path[vertex][0];
             var y = path[vertex][1];
             glist.push("G0X"+x.toFixed(app_settings.num_digits)+
-                         "Y"+y.toFixed(app_settings.num_digits)+"\n");
+                         "Y"+y.toFixed(app_settings.num_digits)+
+                         "\n");
             for (vertex=1; vertex<path.length; vertex++) {
               var x = path[vertex][0];
               var y = path[vertex][1];
               glist.push("G1X"+x.toFixed(app_settings.num_digits)+
-                           "Y"+y.toFixed(app_settings.num_digits)+"\n");
+                           "Y"+y.toFixed(app_settings.num_digits)+
+                           "F"+feedrate+
+                           "S"+intensity+
+                           "\n");
             }
-          }      
+          }
         }
       }
     }
@@ -157,7 +162,7 @@ DataHandler = {
   // rendering //////////////////////////////////
 
 
-  draw : function (canvas, scale, exclude_colors) { 
+  draw : function (canvas, scale, exclude_colors) {
     // draw any path used in passes
     // exclude_colors is optional
     canvas.background('#ffffff');
@@ -190,7 +195,7 @@ DataHandler = {
     }
   },
 
-  draw_bboxes : function (canvas, scale) { 
+  draw_bboxes : function (canvas, scale) {
     // draw with bboxes by color
     // only include colors that are in passe
     var stat;
@@ -316,7 +321,7 @@ DataHandler = {
   getColorOrder : function() {
       var color_order = {};
       var color_count = 0;
-      for (var color in this.paths_by_color) {    
+      for (var color in this.paths_by_color) {
         color_order[color] = color_count;
         color_count++;
       }
@@ -354,7 +359,7 @@ DataHandler = {
           for (vertex=1; vertex<path.length; vertex++) {
             var x = path[vertex][0];
             var y = path[vertex][1];
-            path_lenths_color += 
+            path_lenths_color +=
               Math.sqrt((x-x_prev)*(x-x_prev)+(y-y_prev)*(y-y_prev));
             this.bboxExpand(bbox_color, x, y);
             x_prev = x;
@@ -478,7 +483,7 @@ DataHandler = {
     }
     return rate.toString();
   },
-    
+
   mapConstrainIntensity : function(intens) {
     intens = parseFloat(intens) / 100.0;
     if (intens < 0.0) {
