@@ -480,7 +480,7 @@ DataHandler = {
   },
     
   mapConstrainIntensity : function(intens) {
-    intens = parseFloat(intens); / 100.0
+    intens = parseFloat(intens) / 100.0;
     if (intens < 0.0) {
       intens = 0.0;
       $().uxmessage('warning', "Intensity constrained to 0.0");
@@ -488,6 +488,8 @@ DataHandler = {
       intens = 1.0;
       $().uxmessage('warning', "Intensity constrained to 1.0");
     }
-    return intens;
+    //map to 255 for now until we change the backend
+    return intens.toString();
   },
+
 }
