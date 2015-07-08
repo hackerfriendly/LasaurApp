@@ -68,7 +68,7 @@ $(document).ready(function(){
       air_assist_off = 'M107\n';
     }
     var feedrate = DataHandler.mapConstrainFeedrate($("#feedrate_field" ).val());
-    var intensity =  DataHandler.mapConstrainIntesity($( "#intensity_field" ).val());
+    var intensity =  DataHandler.mapConstrainIntensity($( "#intensity_field" ).val());
     var gcode = 'G90\n'+air_assist_on+'S'+ intensity + '\n' + g0_or_g1;
     if (!(isNaN(x_phy)) && x_phy != null) {
       gcode += 'X' + x_phy.toFixed(app_settings.num_digits);
@@ -90,7 +90,7 @@ $(document).ready(function(){
       move_or_cut = 'cut';
     }
     var feedrate = DataHandler.mapConstrainFeedrate($( "#feedrate_field" ).val());
-    var intensity =  DataHandler.mapConstrainIntesity($( "#intensity_field" ).val());
+    var intensity =  DataHandler.mapConstrainIntensity($( "#intensity_field" ).val());
     var coords_text;
     if (move_or_cut == 'cut') {
       coords_text = move_or_cut + ' to (' + 
