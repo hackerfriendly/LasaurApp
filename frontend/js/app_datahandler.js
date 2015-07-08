@@ -99,14 +99,14 @@ DataHandler = {
     // write machinable gcode, organize by passes
     // header
     var glist = [];
-    glist.push("G90\nM80\n");
+    glist.push("G90\n");
     glist.push("G0F"+app_settings.max_seek_speed+"\n");
     // passes
     for (var i=0; i<this.passes.length; i++) {
       var pass = this.passes[i];
       var colors = pass['colors'];
       var feedrate = this.mapConstrainFeedrate(pass['feedrate']);
-      var intensity = this.mapConstrainIntesity(pass['intensity']);
+      var intensity = this.mapConstrainIntensity(pass['intensity']);
       glist.push("G1F"+feedrate+"\nS"+intensity+"\n");
       for (var c=0; c<colors.length; c++) {
         var color = colors[c];
@@ -130,7 +130,7 @@ DataHandler = {
       }
     }
     // footer
-    glist.push("M81\nS0\nG0X0Y0F"+app_settings.max_seek_speed+"\n");
+    glist.push("G0X0Y0F"+app_settings.max_seek_speed+"\n");
     // alert(JSON.stringify(glist.join('')))
     return glist.join('');
   },
@@ -479,17 +479,15 @@ DataHandler = {
     return rate.toString();
   },
     
-  mapConstrainIntesity : function(intens) {
-    intens = parseInt(intens);
-    if (intens < 0) {
-      intens = 0;
-      $().uxmessage('warning', "Intensity constrained to 0");
-    } else if (intens > 100) {
-      intens = 100;
-      $().uxmessage('warning', "Intensity constrained to 100");
+  mapConstrainIntensity : function(intens) {
+    intens = parseFloat(intens); / 100.0
+    if (intens < 0.0) {
+      intens = 0.0;
+      $().uxmessage('warning', "Intensity constrained to 0.0");
+    } else if (intens > 1.0) {
+      intens = 1.0;
+      $().uxmessage('warning', "Intensity constrained to 1.0");
     }
-    //map to 255 for now until we change the backend
-    return Math.round(intens * 2.55).toString();
+    return intens;
   },
-
 }
