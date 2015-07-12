@@ -95,7 +95,7 @@ def run_with_callback(host, port):
 	server.timeout = 0
 	while 1:
 		try:
-			SerialManager.send_queue_as_ready()
+			SerialManager.process_queue()
 			server.handle_request()
 			time.sleep(0.0004)
 		except KeyboardInterrupt:
