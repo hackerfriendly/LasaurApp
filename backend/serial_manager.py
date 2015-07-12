@@ -82,9 +82,16 @@ class SerialManagerClass:
 
 		for line in lines:
 			line = line.strip()
+			# Skip empty lines
 			if line == '' or line[0] == '%':
 				continue
-			self.tx_queue.append(line)
+			# Status and reset always get queued
+			if re.match(r"(G28|M119|M114|M112|M999)", line):
+				self.set_pause(False)
+				self.tx_queue.append(line)
+			# Don't queue lines if a limit has been hit
+			elif not self.status['limit_hit']:
+				self.tx_queue.append(line)
 
 		self.job_active = True
 
