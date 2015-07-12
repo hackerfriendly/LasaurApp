@@ -12,16 +12,9 @@ class SerialManagerClass:
 	def __init__(self):
 		self.device = None
 
-		self.rx_buffer = ""
-		self.tx_buffer = ""
-		self.tx_index = 0
 		self.remoteXON = True
 
-		# TX_CHUNK_SIZE - this is the number of bytes to be
-		# written to the device in one go. It needs to match the device.
-		self.TX_CHUNK_SIZE = 16
-		self.RX_CHUNK_SIZE = 16
-		self.nRequested = 0
+		self.tx_queue = []
 
 		# used for calculating percentage done
 		self.job_active = False
@@ -48,20 +41,11 @@ class SerialManagerClass:
 
 
 	def connect(self, port, baudrate):
-		self.rx_buffer = ""
-		self.tx_buffer = ""
-		self.tx_index = 0
+		self.tx_queue = []
 		self.remoteXON = True
 		self.reset_status()
 
-		# Create serial device with both read timeout set to 0.
-		# This results in the read() being non-blocking
-		# Write on the other hand uses a large timeout but should not be blocking
-		# much because we ask it only to write TX_CHUNK_SIZE at a time.
-		# BUG WARNING: the pyserial write function does not report how
-		# many bytes were actually written if this is different from requested.
-		# Work around: use a big enough timeout and a small enough chunk size.
-		self.device = serial.Serial(port, baudrate, timeout=0, writeTimeout=1)
+		self.device = serial.Serial(port, baudrate, timeout=1, writeTimeout=1)
 
 
 	def close(self):
@@ -102,35 +86,31 @@ class SerialManagerClass:
 		lines = gcode.split('\n')
 		# print "Adding to queue:"
 		# print lines
-		job_list = []
 		for line in lines:
 			line = line.strip()
 			if line == '' or line[0] == '%':
 				continue
+			self.tx_queue.append(line)
 
-			job_list.append(line)
-
-		gcode_processed = '\n'.join(job_list) + '\n'
-		self.tx_buffer += gcode_processed
 		self.job_active = True
 
 
 	def cancel_queue(self):
-		self.tx_buffer = ""
-		self.tx_index = 0
+		self.tx_queue = []
 		self.job_active = False
 		self.status['ready'] = False
 
 
 	def is_queue_empty(self):
-		return self.tx_index >= len(self.tx_buffer)
+		return len(self.tx_queue) == 0
 
 
 	def get_queue_percentage_done(self):
-		buflen = len(self.tx_buffer)
-		if buflen == 0:
-			return ""
-		return str(100*self.tx_index/float(buflen))
+		return "50"
+		# buflen = len(self.tx_buffer)
+		# if buflen == 0:
+		# 	return ""
+		# return str(100*self.tx_index/float(buflen))
 
 
 	def set_pause(self, flag):
@@ -149,69 +129,47 @@ class SerialManagerClass:
 	def send_queue_as_ready(self):
 		"""Continuously call this to keep processing queue."""
 		if self.device and not self.status['paused']:
+			time.sleep(0.001)  # yield a tiny bit
 			try:
 				### receiving
-				chars = self.device.read(self.RX_CHUNK_SIZE)
-				if len(chars) > 0:
-					self.nRequested = self.TX_CHUNK_SIZE
+				line = self.device.readline()
+				if len(line) > 0:
 					## assemble lines
-					self.rx_buffer += chars
-					while(1):  # process all lines in buffer
-						posNewline = self.rx_buffer.find('\n')
-						if posNewline == -1:
-							break  # no more complete lines
-						else:  # we got a line
-							line = self.rx_buffer[:posNewline]
-							self.rx_buffer = self.rx_buffer[posNewline+1:]
-						# print "received: " + line
-						self.process_status_line(line.rstrip())
-				else:
-					if self.nRequested == 0:
-						time.sleep(0.001)  # no rx/tx, rest a bit
+					self.process_status_line(line.rstrip())
 
 				### sending
-				if self.tx_index < len(self.tx_buffer):
-					if self.nRequested > 0:
+				if len(self.tx_queue) > 0:
+					for line in self.tx_queue:
 						try:
-							t_prewrite = time.time()
-							print "> " + self.tx_buffer[self.tx_index:self.tx_index+self.nRequested]
-							actuallySent = self.device.write(
-								self.tx_buffer[self.tx_index:self.tx_index+self.nRequested])
-							if time.time()-t_prewrite > 0.02:
-								sys.stdout.write("WARN: write delay 1\n")
-								sys.stdout.flush()
+							print "> " + line
+							self.device.write("{0}\n".format(line))
 						except serial.SerialTimeoutException:
 							# skip, report
-							actuallySent = 0  # assume nothing has been sent
 							sys.stdout.write("\nsend_queue_as_ready: writeTimeoutError\n")
 							sys.stdout.flush()
-						self.tx_index += actuallySent
-						self.nRequested -= actuallySent
+					self.tx_queue = []
 
 				else:
 					if self.job_active:
 						# print "\nG-code stream finished!"
 						# print "(LasaurGrbl may take some extra time to finalize)"
-						self.tx_buffer = ""
-						self.tx_index = 0
 						self.job_active = False
 						# ready whenever a job is done
 						self.status['ready'] = True
 			except OSError:
 				# Serial port appears closed => reset
-				self.close()
+				# self.close()
+				pass
 			except ValueError:
-				# Serial port appears closed => reset
-				self.close()
+				# Serial timeout?
+				pass
 
 
 	def process_status_line(self, line):
-		if line == 'ok':
-			print '< ok'
-			self.status['ready'] = True
-			return
+		sys.stdout.write("< %s\n" % line)
+		sys.stdout.flush()
 
-		if line[0:1] == 'ok':
+		if line.startswith('ok'):
 			self.status['ready'] = True
 
 		if re.match(r"ok C: X:(.*) Y:(.*) Z:(.*) A:(.*) B:(.*) C:(.*)", line):
@@ -224,11 +182,9 @@ class SerialManagerClass:
 			self.status['limit_hit'] = False
 
 		if '!!' in line:
-			# halted!
+			# halted! Should probably pause here, and continue if it goes away.
 			self.cancel_queue()
 
-		sys.stdout.write("< %s\n" % line)
-		sys.stdout.flush()
 
 			# if 'P' in line:  # Stop: Power is off
 			# 	self.status['power_off'] = True
