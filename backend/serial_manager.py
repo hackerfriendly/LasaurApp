@@ -37,14 +37,8 @@ class SerialManagerClass:
 		self.status = {
 			'ready': False,  # ready after 'ok'
 			'paused': False,  # this is also a control flag
-			'buffer_overflow': False,
-			'transmission_error': False,
-			'bad_number_format_error': False,
-			'expected_command_letter_error': False,
-			'unsupported_statement_error': False,
-			'power_off': False,
 			'limit_hit': False,
-			'serial_stop_request': False,
+			'current_position': "",
 			'door_open': False,
 			'chiller_off': False,
 			'x': False,
@@ -91,6 +85,7 @@ class SerialManagerClass:
 		# 	# trigger a status report
 		# 	# will update for the next status request
 		# 	self.queue_gcode('?')
+		self.queue_gcode('M114')
 		return self.status
 
 
@@ -215,6 +210,12 @@ class SerialManagerClass:
 			print '< ok'
 			self.status['ready'] = True
 			return
+
+		if line[0:1] == 'ok':
+			self.status['ready'] = True
+
+		if re.match(r"ok C: X:(.*) Y:(.*) Z:(.*) A:(.*) B:(.*) C:(.*)", line):
+			self.status['current_position'] = line
 
 		if re.match(r"Limit switch (.*) was hit", line):  # Stop: A limit was hit
 			self.status['limit_hit'] = True
