@@ -6,7 +6,6 @@ import time
 import serial
 from collections import deque
 
-
 class SerialManagerClass:
 
 	def __init__(self):
@@ -14,7 +13,7 @@ class SerialManagerClass:
 
 		self.remoteXON = True
 
-		self.tx_queue = []
+		self.tx_queue = deque()
 
 		# used for calculating percentage done
 		self.job_active = False
@@ -41,7 +40,7 @@ class SerialManagerClass:
 
 
 	def connect(self, port, baudrate):
-		self.tx_queue = []
+		self.tx_queue.clear()
 		self.remoteXON = True
 		self.reset_status()
 
@@ -96,7 +95,7 @@ class SerialManagerClass:
 
 
 	def cancel_queue(self):
-		self.tx_queue = []
+		self.tx_queue.clear()
 		self.job_active = False
 		self.status['ready'] = False
 
@@ -129,7 +128,6 @@ class SerialManagerClass:
 	def send_queue_as_ready(self):
 		"""Continuously call this to keep processing queue."""
 		if self.device and not self.status['paused']:
-			time.sleep(0.001)  # yield a tiny bit
 			try:
 				### receiving
 				line = self.device.readline()
@@ -139,15 +137,14 @@ class SerialManagerClass:
 
 				### sending
 				if len(self.tx_queue) > 0:
-					for line in self.tx_queue:
-						try:
-							print "> " + line
-							self.device.write("{0}\n".format(line))
-						except serial.SerialTimeoutException:
-							# skip, report
-							sys.stdout.write("\nsend_queue_as_ready: writeTimeoutError\n")
-							sys.stdout.flush()
-					self.tx_queue = []
+					line = self.tx_queue.popleft()
+					try:
+						print "> " + line
+						self.device.write("{0}\n".format(line))
+					except serial.SerialTimeoutException:
+						# skip, report
+						sys.stdout.write("\nsend_queue_as_ready: writeTimeoutError\n")
+						sys.stdout.flush()
 
 				else:
 					if self.job_active:
