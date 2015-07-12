@@ -32,6 +32,7 @@ class SerialManagerClass:
 			'chiller_off': False,
 			'x': False,
 			'y': False,
+			'z': False,
 			'firmware_version': None
 		}
 
@@ -169,8 +170,12 @@ class SerialManagerClass:
 		if line.startswith('ok'):
 			self.status['ready'] = True
 
-		if re.match(r"ok C: X:(.*) Y:(.*) Z:(.*) A:(.*) B:(.*) C:(.*)", line):
+		match = re.search(r"ok C: X:(.*) Y:(.*) Z:(.*) A:(.*) B:(.*) C:(.*)", line)
+		if match:
 			self.status['current_position'] = line
+			self.status['x'] = match.group(1)
+			self.status['y'] = match.group(2)
+			self.status['z'] = match.group(3)
 
 		if re.match(r"(min|max)_(x|y|z):", line):
 			if '1' in line:
