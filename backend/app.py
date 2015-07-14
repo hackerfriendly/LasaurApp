@@ -348,15 +348,16 @@ def job_submit_handler():
 def job_play_handler():
 	job_data = request.forms.get('job_data')
 	if job_data and SerialManager.is_connected():
-		print "going to play file here."
 		try:
 			with open(GCODE_PATH + "/job.gcode", "w") as f:
 				f.write(job_data)
 		except IOError:
-			return "Could not write file {0}/job.gcode".format(GCODE_PATH)
+			return "Couldn't write {0}/job.gcode".format(GCODE_PATH)
 
+		# Flush file to smoothieboard's flash before running
 		call("/bin/sync")
 
+		SerialManager.status['ready'] = False
 		SerialManager.queue_gcode("M32 job.gcode")
 		return "__ok__"
 	else:

@@ -14,9 +14,6 @@ class SerialManagerClass:
 		# gcode as a deque
 		self.tx_queue = deque()
 
-		# used for calculating percentage done
-		self.job_active = False
-
 		# status flags
 		self.status = {}
 		self.reset_status()
@@ -24,7 +21,7 @@ class SerialManagerClass:
 
 	def reset_status(self):
 		self.status = {
-			'ready': False,  # ready after 'ok'
+			'ready': False,  # ready after 'ok' if no job is running
 			'limit_hit': False,
 			'current_position': "",
 			'door_open': False,
@@ -32,7 +29,9 @@ class SerialManagerClass:
 			'x': False,
 			'y': False,
 			'z': False,
-			'firmware_version': None
+			'firmware_version': None,
+			'percent_complete': 0,
+			'estimated_time': 0
 		}
 
 
@@ -63,7 +62,7 @@ class SerialManagerClass:
 
 	def get_hardware_status(self):
 		if self.is_queue_empty():
-			self.queue_gcode('M114\nM119')
+			self.queue_gcode('M114\nM119\nprogress')
 		return self.status
 
 
@@ -92,12 +91,9 @@ class SerialManagerClass:
 			elif not self.status['limit_hit']:
 				self.tx_queue.append(line)
 
-		self.job_active = True
-
 
 	def cancel_queue(self):
 		self.tx_queue.clear()
-		self.job_active = False
 		self.status['ready'] = False
 
 
@@ -105,12 +101,7 @@ class SerialManagerClass:
 		return len(self.tx_queue) == 0
 
 	def get_queue_percentage_done(self):
-		return "50"
-		# TODO
-		# buflen = len(self.tx_buffer)
-		# if buflen == 0:
-		# 	return ""
-		# return str(100*self.tx_index/float(buflen))
+		return self.status['percent_complete']
 
 	def process_queue(self):
 		"""Continuously call this to keep processing queue."""
@@ -133,12 +124,6 @@ class SerialManagerClass:
 						sys.stdout.write("\nprocess_queue: writeTimeoutError\n")
 						sys.stdout.flush()
 
-				else:
-					if self.job_active:
-						# print "\nG-code stream finished!"
-						self.job_active = False
-						# ready whenever a job is done
-						self.status['ready'] = True
 			except OSError:
 				# Serial port appears closed => reset
 				self.close()
@@ -148,11 +133,11 @@ class SerialManagerClass:
 
 
 	def process_status_line(self, line):
-		sys.stdout.write("< %s\n" % line)
-		sys.stdout.flush()
 
-		if line.startswith('ok'):
-			self.status['ready'] = True
+		# if line.startswith('ok'):
+		# 	self.status['ready'] = True
+
+		# if '!!' in line:
 
 		match = re.search(r"ok C: X:(.*) Y:(.*) Z:(.*) A:(.*) B:(.*) C:(.*)", line)
 		if match:
@@ -161,23 +146,28 @@ class SerialManagerClass:
 			self.status['y'] = match.group(2)
 			self.status['z'] = match.group(3)
 
+		# file: /job.gcode, 2 % complete, elapsed time: 2 s
+		# file: /job.gcode, 47 % complete, elapsed time: 71 s, est time: 77 s
+		match = re.search(r"file.* (\d+).*complete", line)
+		if match:
+			self.status['percent_complete'] = match.group(1)
+
+		if re.match(r"Not currently playing", line):
+			self.status['ready'] = True
+			self.status['percent_complete'] = 0
+
+		if re.match(r"Limit switch (.*) was hit", line):  # Stop: A limit was hit
+			self.status['limit_hit'] = True
+			self.cancel_queue()
+
 		if re.match(r"(min|max)_(x|y|z):", line):
 			if '1' in line:
 				self.status['limit_hit'] = True
 			else:
 				self.status['limit_hit'] = False
 
-		if re.match(r"Limit switch (.*) was hit", line):  # Stop: A limit was hit
-			self.status['limit_hit'] = True
-			self.cancel_queue()
-
-		# if '!!' in line:
-
-		# file: /sd/jobs/words.gcode, 2 % complete, elapsed time: 2 s
-		# file: /sd/jobs/words.gcode, 47 % complete, elapsed time: 71 s, est time: 77 s
-		# SD print is paused at 14690/44776
-		# Not currently playing
-
+		sys.stdout.write("< %s\n" % line)
+		sys.stdout.flush()
 
 # singelton
 SerialManager = SerialManagerClass()
