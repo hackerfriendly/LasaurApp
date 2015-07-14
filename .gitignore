@@ -2,3 +2,4 @@
 *.pyo
 *.DS_Store
 sftp-config.json
+*.sublime-*
