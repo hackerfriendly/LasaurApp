@@ -50,44 +50,42 @@ var progress_not_yet_done_flag = false;
 })(jQuery);
 
 
-function send_gcode(gcode, success_msg, progress) {
-  // if (hardware_ready_state || gcode[0] == '!' || gcode[0] == '~') {
-  if (true) {
-    if (typeof gcode === "string" && gcode != '') {
-      // $().uxmessage('notice', gcode, Infinity);
-      $.ajax({
-        type: "POST",
-        url: "/gcode",
-        data: {'job_data':gcode},
-        // dataType: "json",
-        success: function (data) {
-          if (data == "__ok__") {
-            $().uxmessage('success', success_msg);
-            if (progress = true) {
-              // show progress bar, register live updates
-              if ($("#progressbar").children().first().width() == 0) {
-                $("#progressbar").children().first().width('5%');
-                $("#progressbar").show();
-                progress_not_yet_done_flag = true;
-                setTimeout(update_progress, 2000);
-              }
-            }
-          } else {
-            $().uxmessage('error', "Backend error: " + data);
-          }
-        },
-        error: function (data) {
-          $().uxmessage('error', "Timeout. LaserRaptor server down?");
-        },
-        complete: function (data) {
-          // future use
-        }
-      });
-    } else {
-      $().uxmessage('error', "No gcode.");
+function send_gcode(gcode, success_msg, progress, post_to) {
+  if (typeof gcode === "string" && gcode != '') {
+    if (! post_to) {
+      post_to = "/gcode";
     }
+    // $().uxmessage('notice', gcode, Infinity);
+    $.ajax({
+      type: "POST",
+      url: post_to,
+      data: {'job_data':gcode},
+      // dataType: "json",
+      success: function (data) {
+        if (data == "__ok__") {
+          $().uxmessage('success', success_msg);
+          if (progress = true) {
+            // show progress bar, register live updates
+            if ($("#progressbar").children().first().width() == 0) {
+              $("#progressbar").children().first().width('5%');
+              $("#progressbar").show();
+              progress_not_yet_done_flag = true;
+              setTimeout(update_progress, 2000);
+            }
+          }
+        } else {
+          $().uxmessage('error', "Backend error: " + data);
+        }
+      },
+      error: function (data) {
+        $().uxmessage('error', "Timeout. LaserRaptor server down?");
+      },
+      complete: function (data) {
+        // future use
+      }
+    });
   } else {
-    $().uxmessage('warning', "Not ready, request ignored.");
+    $().uxmessage('error', "No gcode.");
   }
 }
 
@@ -216,17 +214,6 @@ $(document).ready(function(){
   // get hardware status
   function poll_hardware_status() {
     $.getJSON('/status', function(data) {
-      // pause status
-      if (data.paused) {
-        pause_btn_state = true;
-        $("#pause_btn").addClass("btn-primary");
-        $("#pause_btn").html('<i class="icon-play"></i>');
-      } else {
-        pause_btn_state = false;
-        $("#pause_btn").removeClass("btn-warning");
-        $("#pause_btn").removeClass("btn-primary");
-        $("#pause_btn").html('<i class="icon-pause"></i>');
-      }
       // serial connected
       if (data.serial_connected) {
         connect_btn_set_state(true);
@@ -377,39 +364,25 @@ $(document).ready(function(){
   $("#pause_btn").tooltip({placement:'bottom', delay: {show:500, hide:100}});
   $("#pause_btn").click(function(e){
     if (pause_btn_state == true) {  // unpause
-      $.get('/pause/0', function(data) {
-        if (data == '0') {
-          pause_btn_state = false;
-          $("#pause_btn").removeClass('btn-primary');
-          $("#pause_btn").removeClass('btn-warning');
-          $("#pause_btn").html('<i class="icon-pause"></i>');
-          $().uxmessage('notice', "Continuing...");
-        }
-      });
+      send_gcode("M24", "Resuming...", false);
+      pause_btn_state = false;
+      $("#pause_btn").removeClass('btn-primary');
+      $("#pause_btn").removeClass('btn-warning');
+      $("#pause_btn").html('<i class="icon-pause"></i>');
     } else {  // pause
       $("#pause_btn").addClass('btn-warning');
-      $.get('/pause/1', function(data) {
-        if (data == "1") {
-          pause_btn_state = true;
-          $("#pause_btn").removeClass("btn-warning");
-          $("#pause_btn").addClass('btn-primary');
-          $("#pause_btn").html('<i class="icon-play"></i>');
-          $().uxmessage('notice', "Pausing in a bit...");
-        } else if (data == '0') {
-          $("#pause_btn").removeClass("btn-warning");
-          $("#pause_btn").removeClass("btn-primary");
-          $().uxmessage('notice', "Not pausing...");
-        }
-      });
-    }
+      send_gcode("M25", "Pausing...", false);
+      pause_btn_state = true;
+      $("#pause_btn").removeClass("btn-warning");
+      $("#pause_btn").addClass('btn-primary');
+      $("#pause_btn").html('<i class="icon-play"></i>');
+    };
     e.preventDefault();
   });
-  //\\\\\\ serial connect and pause button \\\\\\\\
-
 
   $("#cancel_btn").tooltip({placement:'bottom', delay: {show:500, hide:100}});
   $("#cancel_btn").click(function(e){
-    var gcode = 'M112'  // enter stop state
+    var gcode = 'M26\nM112'  // enter stop state
     send_gcode(gcode, "Stopping ...", false);
     var delayedresume = setTimeout(function() {
       var gcode = 'M999' // reset
@@ -420,7 +393,7 @@ $(document).ready(function(){
 
   $("#homing_cycle").tooltip({placement:'bottom', delay: {show:500, hide:100}});
   $("#homing_cycle").click(function(e){
-    send_gcode('M112', "Stopping ...", false);
+    send_gcode('M26\nM112', "Stopping ...", false);
     var delayedresume = setTimeout(function() {
       send_gcode('M999', "Starting ...", false);
       if(offsetEnabled) {

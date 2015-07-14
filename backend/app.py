@@ -7,9 +7,10 @@ from wsgiref.simple_server import WSGIRequestHandler, make_server
 from bottle import *
 from serial_manager import SerialManager
 from filereaders import read_svg, read_dxf, read_ngc
+from subprocess import call
 
 APPNAME = "LaserRaptor"
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 COMPANY_NAME = "com.hackerfriendly"
 SERIAL_PORT = None
 SMOOTHIE_PORT = "/dev/ttyACM0"
@@ -17,6 +18,7 @@ BITSPERSECOND = 115200
 NETWORK_PORT = 4444
 CONFIG_FILE = "lasaurapp.conf"
 TOLERANCE = 0.08
+GCODE_PATH = "/smoothie/"
 
 def resources_dir():
 	"""This is to be used with all relative file access.
@@ -323,16 +325,14 @@ def get_status():
 def set_pause(flag):
 	# returns pause status
 	if flag == '1':
-		if SerialManager.set_pause(True):
-			print "pausing ..."
+			# pause
+			SerialManager.status['paused'] = True
+			SerialManager.queue_gcode('M25')
 			return '1'
-		else:
-			return '0'
 	elif flag == '0':
-		print "resuming ..."
-		if SerialManager.set_pause(False):
-			return '1'
-		else:
+			# resume
+			SerialManager.status['paused'] = False
+			SerialManager.queue_gcode('M24')
 			return '0'
 
 @route('/gcode', method='POST')
@@ -340,6 +340,24 @@ def job_submit_handler():
 	job_data = request.forms.get('job_data')
 	if job_data and SerialManager.is_connected():
 		SerialManager.queue_gcode(job_data)
+		return "__ok__"
+	else:
+		return "serial disconnected"
+
+@route('/play', method='POST')
+def job_play_handler():
+	job_data = request.forms.get('job_data')
+	if job_data and SerialManager.is_connected():
+		print "going to play file here."
+		try:
+			with open(GCODE_PATH + "/job.gcode", "w") as f:
+				f.write(job_data)
+		except IOError:
+			return "Could not write file {0}/job.gcode".format(GCODE_PATH)
+
+		call("/bin/sync")
+
+		SerialManager.queue_gcode("M32 job.gcode")
 		return "__ok__"
 	else:
 		return "serial disconnected"

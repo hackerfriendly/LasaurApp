@@ -25,7 +25,6 @@ class SerialManagerClass:
 	def reset_status(self):
 		self.status = {
 			'ready': False,  # ready after 'ok'
-			'paused': False,  # this is also a control flag
 			'limit_hit': False,
 			'current_position': "",
 			'door_open': False,
@@ -86,9 +85,8 @@ class SerialManagerClass:
 			# Skip empty lines
 			if line == '' or line[0] == '%':
 				continue
-			# Status and reset always get queued
-			if re.match(r"(G28|M119|M114|M112|M999)", line):
-				self.set_pause(False)
+			# Status, abort, homing, and reset always get queued
+			if re.match(r"(G28|M26|M119|M114|M112|M999)", line):
 				self.tx_queue.append(line)
 			# Don't queue lines if a limit has been hit
 			elif not self.status['limit_hit']:
@@ -114,22 +112,9 @@ class SerialManagerClass:
 		# 	return ""
 		# return str(100*self.tx_index/float(buflen))
 
-	def set_pause(self, flag):
-		# returns pause status
-		if self.is_queue_empty():
-			return False
-		else:
-			if flag:  # pause
-				self.status['paused'] = True
-				return True
-			else:     # unpause
-				self.status['paused'] = False
-				return False
-
-
 	def process_queue(self):
 		"""Continuously call this to keep processing queue."""
-		if self.device and not self.status['paused']:
+		if self.device:
 			try:
 				### receiving
 				line = self.device.readline()
@@ -151,7 +136,6 @@ class SerialManagerClass:
 				else:
 					if self.job_active:
 						# print "\nG-code stream finished!"
-						# print "(LasaurGrbl may take some extra time to finalize)"
 						self.job_active = False
 						# ready whenever a job is done
 						self.status['ready'] = True
@@ -187,11 +171,13 @@ class SerialManagerClass:
 			self.status['limit_hit'] = True
 			self.cancel_queue()
 
-		if '!!' in line:
-			if 'G28' in self.tx_queue:
-				self.set_pause(False)
-			else:
-				self.set_pause(True)
+		# if '!!' in line:
+
+		# file: /sd/jobs/words.gcode, 2 % complete, elapsed time: 2 s
+		# file: /sd/jobs/words.gcode, 47 % complete, elapsed time: 71 s, est time: 77 s
+		# SD print is paused at 14690/44776
+		# Not currently playing
+
 
 # singelton
 SerialManager = SerialManagerClass()
